@@ -140,7 +140,7 @@ List of booleans:
 
 String is a list of characters:
 >>> :t "some string"
-"Some string" :: [Char]
+"some string" :: [Char]
 
 Empty list:
 >>> :t []
@@ -208,10 +208,8 @@ to guess first, what you will see.
 >>> drop 5 "Hello, World!"
 ", World!"
 >>> zip "abc" [1, 2, 3]  -- convert two lists to a single list of pairs
-zip :: [a] -> [b] -> [(a, b)]
 [('a',1),('b',2),('c',3)]
 >>> words "Hello   Haskell     World!"  -- split the string into the list of words
-words :: String -> [String]
 ["Hello","Haskell","World!"]
 
 
@@ -338,7 +336,9 @@ from it!
 ghci> :l src/Chapter2.hs
 -}
 subList :: Int -> Int -> [a] -> [a]
-subList first second list = drop first (take (second+1) list)
+subList first second list = if first < 0 || second < 0 
+  then []
+  else drop first (take (second+1) list)
 
 {- |
 =⚔️= Task 4
@@ -352,8 +352,8 @@ Implement a function that returns only the first half of a given list.
 -}
 firstHalf :: [a] -> [a]
 firstHalf l = 
-	let halfIndex = div (length l) 2 
-	in take halfIndex l
+  let halfIndex = div (length l) 2 
+  in take halfIndex l
 
 
 {- |
@@ -612,7 +612,7 @@ Implement a function that duplicates each element of the list
 -}
 duplicate :: [a] -> [a]
 duplicate [] = [] 
-duplicate (x:xs) = x : x : dublicate xs 
+duplicate (x:xs) = x : x : duplicate xs 
 
 
 {- |
@@ -634,8 +634,8 @@ takeEven l = go 1 l
     go :: Int -> [a] -> [a]
     go _ [] = []
     go acc (x:xs) = if mod acc 2 == 0 
-    	then go (acc+1) xs 
-	else x : go (acc+1) xs
+      then go (acc+1) xs 
+      else x : go (acc+1) xs
 
 {- |
 =🛡= Higher-order functions
@@ -755,8 +755,8 @@ the list with only those lists that contain a passed element.
 
 🕯 HINT: Use the 'elem' function to check whether an element belongs to a list
 -}
-contains :: a -> [[a]]
-contains e l = any (elem e) l 
+contains :: Int -> [[Int]] -> [[Int]]
+contains e l = filter (elem e) l
 
 
 {- |
@@ -798,10 +798,11 @@ mastered the skill of eta-reducing.
 divideTenBy :: Int -> Int
 divideTenBy = div 10
 
-listElementsLessThan :: a -> [a] -> [a]  
-listElementsLessThan x = filter (< x)
+listElementsLessThan :: Int -> [Int] -> [Int]  
+listElementsLessThan x = filter ( < x)
 
 -- Can you eta-reduce this one???
+pairMul :: [Int] -> [Int] -> [Int]
 pairMul = zipWith (*)
 
 {- |
@@ -857,9 +858,11 @@ list.
 
 🕯 HINT: Use the 'cycle' function
 -}
-import Data.List (cycle)
+
 rotate :: Int -> [a] -> [a]
-rotate num l = take (length l) (drop num (cycle l)) 
+rotate num l = if num < 0 
+  then []
+  else take (length l) (drop num (cycle l)) 
 
 {- |
 =💣= Task 12*
