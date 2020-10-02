@@ -547,9 +547,7 @@ mid x y z
     | z <= x && x <= y = x
     | x <= y && y <= z = y
     | z <= y && y <= x = y
-    | x <= z && z <= y = z
-    | y <= z && z <= x = z
-    | otherwise = 0
+    | otherwise = z
 
 {- |
 =⚔️= Task 8
@@ -661,7 +659,7 @@ You need to use recursion in this task. Feel free to return to it later, if you
 aren't ready for this boss yet!
 -}
 firstDigit :: Int -> Int
-firstDigit n = if div n 10 == 0 then n else firstDigit (div n 10)
+firstDigit n = if div (abs n) 10 == 0 then n else firstDigit (div (abs n) 10)
 
 
 {-
