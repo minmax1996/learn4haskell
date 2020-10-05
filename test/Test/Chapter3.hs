@@ -44,4 +44,19 @@ chapter3 = describe "Chapter3" $ do
         it "days to next party" $ daysToParty Friday `shouldBe` 7
         it "days to party in Monday" $ daysToParty Monday `shouldBe` 4
         it "days to next party day after party " $ daysToParty Saturday `shouldBe` 6
+    describe "Task9: Fight" $ do
+        it "Knight can drink potion" $ drinkPotion (KnightPlayer (Health 5) (Attack 5) (Defence 5) True) `shouldBe` KnightPlayer (Health 10) (Attack 5) (Defence 5) True
+        it "Knight can cast spell" $ castSpell (KnightPlayer (Health 5) (Attack 5) (Defence 5) True) `shouldBe` KnightPlayer (Health 5) (Attack 5) (Defence 10) True
+        it "Knight can drink and cast spell" $ (drinkPotion $ castSpell (KnightPlayer (Health 5) (Attack 5) (Defence 5) True)) `shouldBe` KnightPlayer (Health 10) (Attack 5) (Defence 10) True
+        it "Knight can drink and cast spell" $ (drinkPotion $ castSpell (KnightPlayer (Health 5) (Attack 5) (Defence 5) True)) `shouldBe` KnightPlayer (Health 10) (Attack 5) (Defence 10) True
+        it "Monster can run away" $ runAway (MonsterPlayer (Health 5) (Attack 5) True) `shouldBe` MonsterPlayer (Health 5) (Attack 5) False
+        it "Knight can hit Knight" $ knightHit (KnightPlayer (Health 5) (Attack 5) (Defence 5) True) (KnightPlayer (Health 10) (Attack 5) (Defence 1) True) `shouldBe` (KnightPlayer (Health 6) (Attack 5) (Defence 1) True)
+        it "Knight can kill Knight" $ knightHit (KnightPlayer (Health 5) (Attack 55) (Defence 5) True) (KnightPlayer (Health 10) (Attack 5) (Defence 1) True) `shouldBe` (KnightPlayer (Health (-44)) (Attack 5) (Defence 1) False)
+        it "Knight can hit Monster" $ knightHit (KnightPlayer (Health 5) (Attack 5) (Defence 5) True) (MonsterPlayer (Health 10) (Attack 5) True) `shouldBe` (MonsterPlayer (Health 5) (Attack 5) True)
+        it "Knight can kill Monster"  $ knightHit (KnightPlayer (Health 5) (Attack 55) (Defence 5) True) (MonsterPlayer (Health 10) (Attack 5) True) `shouldBe` (MonsterPlayer (Health (-45)) (Attack 5) False)
+        it "Monster can hit Knight"   $ monsterHit (MonsterPlayer (Health 5) (Attack 5)  True) (KnightPlayer (Health 10) (Attack 5) (Defence 1) True) `shouldBe` (KnightPlayer (Health 6) (Attack 5) (Defence 1) True)
+        it "Monster can kill Knight"  $ monsterHit (MonsterPlayer (Health 5) (Attack 55) True) (KnightPlayer (Health 10) (Attack 5) (Defence 1) True) `shouldBe` (KnightPlayer (Health (-44)) (Attack 5) (Defence 1) False)
+        it "Monster can hit Monster"  $ monsterHit (MonsterPlayer (Health 5) (Attack 5)  True) (MonsterPlayer (Health 10) (Attack 5) True) `shouldBe` (MonsterPlayer (Health 5) (Attack 5) True)
+        it "Monster can kill Monster" $ monsterHit (MonsterPlayer (Health 5) (Attack 55) True) (MonsterPlayer (Health 10) (Attack 5) True) `shouldBe` (MonsterPlayer (Health (-45)) (Attack 5) False)
+        it "Knight that can kill other Knight not kills him" $ knightHit (KnightPlayer (Health 5) (Attack 15) (Defence 5) True) (drinkPotion (KnightPlayer (Health 10) (Attack 5) (Defence 5) True)) `shouldBe` (KnightPlayer (Health 5) (Attack 5) (Defence 5) True)
 

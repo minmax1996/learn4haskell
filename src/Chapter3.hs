@@ -1164,65 +1164,100 @@ newtype Dexterity = Dexterity Int
 newtype Strength = Strength Int
 newtype Damage = Damage Int
 newtype Defence = Defence Int
-
-data Player = Player
-    { playerHealth    :: Health
-    , playerArmor     :: Armor
-    , playerAttack    :: Attack
-    , playerDexterity :: Dexterity
-    , playerStrength  :: Strength
-    }
-
-calculatePlayerDamage :: Attack -> Strength -> Damage
-calculatePlayerDamage (Attack attack) (Strength strength) = Damage (attack + strength)
-
-calculatePlayerDefense :: Armor -> Dexterity -> Defence
-calculatePlayerDefense (Armor armor) (Dexterity dexterity) = Defence (armor * dexterity)
-
-calculatePlayerHit :: Damage -> Defence -> Health -> Health
-calculatePlayerHit (Damage damage) (Defence defense) (Health health) = Health (health + defense - damage)
-
-
 -}
 
 data KnightPlayer = KnightPlayer 
   { knightPlayerHealth :: Health
   , knightPlayerAttack :: Attack
   , knightPlayerDefence :: Defence
-  , knightPlayerAlive :: Bool
-  } deriving (Show)
+  , knightAlive :: Bool
+  } deriving (Show, Eq)
 
 data MonsterPlayer = MonsterPlayer 
   { monsterPlayerHealth :: Health
   , monsterPlayerAttack :: Attack
-  }
+  , monsterAlive :: Bool
+  } deriving (Show, Eq)
 
+-- A knight can attack, drink a health potion, cast a spell to increase their defence
 drinkPotion :: KnightPlayer -> KnightPlayer
-drinkPotion kp = kp {knightPlayerHealth = getNewHealth (knightPlayerHealth kp)}
+drinkPotion kp = kp { knightPlayerHealth = getNewHealth (knightPlayerHealth kp) }
   where getNewHealth :: Health -> Health
         getNewHealth (Health h) = Health (h + 5)
 
 castSpell :: KnightPlayer -> KnightPlayer
-castSpell kp = kp {knightPlayerDefence= getNewDef (knightPlayerDefence kp)}
+castSpell kp = kp { knightPlayerDefence= getNewDef (knightPlayerDefence kp) }
   where getNewDef :: Defence -> Defence
         getNewDef (Defence h) = Defence (h + 5)
-        
--- class AttackAction a  where
---   attack :: a -> b -> b
 
--- instance AttackAction KnightPlayer KnightPlayer where
---   attack :: KnightPlayer -> KnightPlayer -> KnightPlayer
---   attack attacker defencer = if finalHealth <= 0 
---     then defencer {knightPlayerHealth = finalHealth, knightPlayerAlive = False}
---     else defencer {knightPlayerHealth = finalHealth }
---     where finalHealth = calculateFinalHealt attacker defencer
+class KnightHit a where
+  knightHit :: KnightPlayer -> a -> a
 
+instance KnightHit MonsterPlayer where
+  knightHit :: KnightPlayer -> MonsterPlayer -> MonsterPlayer
+  knightHit kp mp = mp { monsterPlayerHealth = Health(newHealthInt), monsterAlive = not isDefeated }
+    where calculateHit :: Health -> Attack -> Int
+          calculateHit (Health h) (Attack a) = h - a
+          newHealthInt = calculateHit (monsterPlayerHealth mp) (knightPlayerAttack kp)
+          isDefeated = newHealthInt <= 0
 
+instance KnightHit KnightPlayer where
+  knightHit :: KnightPlayer -> KnightPlayer -> KnightPlayer
+  knightHit kp mp = mp { knightPlayerHealth = Health(newHealthInt), knightAlive = not isDefeated }
+    where calculateHit :: Health -> Defence -> Attack -> Int
+          calculateHit (Health h) (Defence d) (Attack a) = h + d - a
+          newHealthInt = calculateHit (knightPlayerHealth mp) (knightPlayerDefence mp) (knightPlayerAttack kp)
+          isDefeated = newHealthInt <= 0
 
---decideOutcome :: PlayerPlayer -> PlayerPlayer -> PlayerPlayer
+class MonsterHit a where
+  monsterHit :: MonsterPlayer -> a -> a
+
+instance MonsterHit MonsterPlayer where
+  monsterHit :: MonsterPlayer -> MonsterPlayer -> MonsterPlayer
+  monsterHit kp mp = mp { monsterPlayerHealth = Health(newHealthInt), monsterAlive = not isDefeated }
+    where calculateHit :: Health -> Attack -> Int
+          calculateHit (Health h) (Attack a) = h - a
+          newHealthInt = calculateHit (monsterPlayerHealth mp) (monsterPlayerAttack kp)
+          isDefeated = newHealthInt <= 0
+
+instance MonsterHit KnightPlayer where
+  monsterHit :: MonsterPlayer -> KnightPlayer -> KnightPlayer
+  monsterHit kp mp = mp { knightPlayerHealth = Health(newHealthInt), knightAlive = not isDefeated }
+    where calculateHit :: Health -> Defence -> Attack -> Int
+          calculateHit (Health h) (Defence d) (Attack a) = h + d - a
+          newHealthInt = calculateHit (knightPlayerHealth mp) (knightPlayerDefence mp) (monsterPlayerAttack kp)
+          isDefeated = newHealthInt <= 0
+
+runAway :: MonsterPlayer -> MonsterPlayer
+runAway mp = mp { monsterAlive = False }
+
+class Alive a where
+  isAlive :: a -> Bool
+
+instance Alive MonsterPlayer where
+  isAlive :: MonsterPlayer -> Bool
+  isAlive = monsterAlive
+
+instance Alive KnightPlayer where
+  isAlive :: KnightPlayer -> Bool
+  isAlive = knightAlive
+
+-- fight :: a -> b -> b
+-- idk
+
+-- battle :: a -> b -> String
+-- battle one two 
+--   | (isAlivee one) && not (isAlivee newTwo) = "FirstWin"
+--   | not (isAlivee newOne) && (isAlivee two) = "SecondWin"
+--   | otherwise = battle newOne newTwo
+--     where
+--       newTwo = attack one two
+--       newOne = if (isAlivee newTwo)
+--         then attack two one
+--         else one
 
 {-
-You did it! Now it is time to the open pull request with your changes
+You almost did it! Now it is time to the open pull request with your changes
 and summon @vrom911 and @chshersh for the review!
 -}
 
