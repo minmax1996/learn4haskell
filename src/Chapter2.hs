@@ -338,7 +338,7 @@ ghci> :l src/Chapter2.hs
 subList :: Int -> Int -> [a] -> [a]
 subList first second list = if first < 0 || second < 0 
   then []
-  else drop first (take (second+1) list)
+  else drop first (take (second + 1) list)
 
 {- |
 =⚔️= Task 4
@@ -629,13 +629,12 @@ Write a function that takes elements of a list only on even positions.
 -}
 takeEven :: [a] -> [a]
 takeEven [] = []
-takeEven l = go 1 l
+takeEven l = go True l
   where
-    go :: Int -> [a] -> [a]
+    go :: Bool -> [a] -> [a]
     go _ [] = []
-    go acc (x:xs) = if mod acc 2 == 0 
-      then go (acc+1) xs 
-      else x : go (acc+1) xs
+    go True (x:xs) = x : go False xs
+    go False (_:xs) = go True xs 
 
 {- |
 =🛡= Higher-order functions
@@ -742,7 +741,7 @@ value of the element itself
 🕯 HINT: Use combination of 'map' and 'replicate'
 -}
 smartReplicate :: [Int] -> [Int]
-smartReplicate l = concat (map (\x->replicate x x) l) 
+smartReplicate = concatMap (\x->replicate x x) 
 
 {- |
 =⚔️= Task 9
@@ -756,7 +755,7 @@ the list with only those lists that contain a passed element.
 🕯 HINT: Use the 'elem' function to check whether an element belongs to a list
 -}
 contains :: Int -> [[Int]] -> [[Int]]
-contains e l = filter (elem e) l
+contains e = filter (elem e) 
 
 
 {- |
@@ -860,6 +859,7 @@ list.
 -}
 
 rotate :: Int -> [a] -> [a]
+rotate _ [] = []
 rotate num l = if num < 0 
   then []
   else take (length l) (drop num (cycle l)) 
@@ -879,10 +879,13 @@ and reverses it.
   cheating!
 -}
 
+-- copied from solution to understand
 rewind :: [a] -> [a]
-rewind [] = []
-rewind (x:xs) = rewind xs ++ [x]
-
+rewind = go []
+  where 
+    go :: [a] -> [a] -> [a]
+    go res [] = res
+    go res (x:xs) = go (x : res) xs
 
 {-
 You did it! Now it is time to the open pull request with your changes
