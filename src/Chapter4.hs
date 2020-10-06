@@ -114,23 +114,23 @@ As always, try to guess the output first! And don't forget to insert
 the output in here:
 
 >>> :k Char
-
+Char :: *
 >>> :k Bool
-
+Bool :: *
 >>> :k [Int]
-
+[Int] :: *
 >>> :k []
-
+[] :: * -> *
 >>> :k (->)
-
+(->) :: * -> * -> *
 >>> :k Either
-
+Either :: * -> * -> *
 >>> data Trinity a b c = MkTrinity a b c
 >>> :k Trinity
-
+Trinity :: * -> * -> * -> *
 >>> data IntBox f = MkIntBox (f Int)
 >>> :k IntBox
-
+IntBox :: (* -> *) -> *
 -}
 
 {- |
@@ -259,7 +259,7 @@ name.
 
 > QUESTION: Can you understand why the following implementation of the
   Functor instance for Maybe doesn't compile?
-
+Maybe because in `fmap _ x = x` returns Maybe a insteed of Maybe b
 @
 instance Functor Maybe where
     fmap :: (a -> b) -> Maybe a -> Maybe b
@@ -276,6 +276,13 @@ below. 'Secret' is either an unknown trap with something dangerous
 inside or a reward with some treasure. You never know what's inside
 until opened! But the 'Functor' instance allows changing the reward
 inside, so it is quite handy.
+
+fmap (replicate 3) (Reward "42")
+Reward ["42","42","42"]
+fmap (replicate 3) (Reward 42)
+Reward [42,42,42]
+fmap (replicate 3) (Trap 42)
+
 -}
 data Secret e a
     = Trap e
@@ -293,7 +300,7 @@ values and apply them to the type level?
 -}
 instance Functor (Secret e) where
     fmap :: (a -> b) -> Secret e a -> Secret e b
-    fmap = error "fmap for Box: not implemented!"
+    fmap f (Reward tb) = Reward (f tb)
 
 {- |
 =⚔️= Task 3
@@ -302,10 +309,20 @@ Implement Functor instance for the "List" type defined below. This
 list type mimics the standard lists in Haskell. But for training
 purposes, let's practise our skills on implementing standard
 typeclasses for standard data types.
+myl = Cons 2 $ Cons 1 $ Empty
+fmap (replicate 3) myl
+Cons [2,2,2] (Cons [1,1,1] Empty)
 -}
 data List a
     = Empty
     | Cons a (List a)
+    deriving (Show, Eq)
+
+instance Functor (List) where
+    fmap :: (a -> b) -> List a -> List b
+    fmap f Empty = Empty
+    fmap f (Cons d b) = Cons (f d) (fmap f b)
+
 
 {- |
 =🛡= Applicative
@@ -469,13 +486,16 @@ Applicatives can be found in many applications:
 =⚔️= Task 4
 
 Implement the Applicative instance for our 'Secret' data type from before.
+fmap (+) (Reward 1) <*> (Reward 2)
+=> Reward 3
 -}
+
 instance Applicative (Secret e) where
     pure :: a -> Secret e a
-    pure = error "pure Secret: Not implemented!"
+    pure = Reward
 
     (<*>) :: Secret e (a -> b) -> Secret e a -> Secret e b
-    (<*>) = error "(<*>) Secret: Not implemented!"
+    Reward f <*> d = fmap f d
 
 {- |
 =⚔️= Task 5
@@ -489,7 +509,15 @@ Implement the 'Applicative' instance for our 'List' type.
   type.
 -}
 
+instance Applicative (List) where
+    pure :: a -> List a
+    pure i = Cons i $ Empty 
 
+    (<*>) :: List (a -> b) -> List a -> List b
+    Empty <*> _ = Empty
+    Cons fun lfun <*> dat = fmap fun dat
+---- where; it works but not right
+ 
 {- |
 =🛡= Monad
 
