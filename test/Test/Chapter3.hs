@@ -16,17 +16,17 @@ chapter3 = describe "Chapter3" $ do
         it "in fight monster wins" $ fight (MkMonster 10 5 5) (MkKnight 4 5 14) `shouldBe` -1
         it "in fight nobody wins" $ fight (MkMonster 10 5 5) (MkKnight 10 5 5) `shouldBe` 5
     describe "Task4: magical city" $ do
-        it "in build with no castle" $ buildCastle "NewName" (MkCity NoCastle NoWall Church []) `shouldBe` (MkCity (Castle "NewName") NoWall Church [])
-        it "in build castle with Castle" $ buildCastle "NewName" (MkCity (Castle "OldOne") NoWall Church []) `shouldBe` (MkCity (Castle "NewName") NoWall Church [])
-        it "in build House with no houses in city" $ buildHouse 1 (MkCity NoCastle NoWall Church []) `shouldBe` (MkCity NoCastle NoWall Church [MkHouse 1])
-        it "in build House with one house in city" $ buildHouse 2 (MkCity NoCastle NoWall Church [MkHouse 1]) `shouldBe` (MkCity NoCastle NoWall Church [MkHouse 2, MkHouse 1])
-        it "in build House with more 4 peopel" $ buildHouse 5 (MkCity NoCastle NoWall Church [MkHouse 1]) `shouldBe` (MkCity NoCastle NoWall Church [MkHouse 1])
-        it "in build wall with no castle" $ buildWalls (MkCity NoCastle NoWall Church [MkHouse 1]) `shouldBe` (MkCity NoCastle NoWall Church [MkHouse 1])
-        it "in build wall with Wall" $ buildWalls (MkCity NoCastle Wall Church [MkHouse 1]) `shouldBe` (MkCity NoCastle Wall Church [MkHouse 1])
-        it "count people" $ countPeople [MkHouse 1,MkHouse 2,MkHouse 4] `shouldBe` 7
+        it "in build with no castle" $ buildCastle "NewName" (MkCity NoCastle Church []) `shouldBe` (MkCity (Castle "NewName") Church [])
+        it "in build castle with Castle" $ buildCastle "NewName" (MkCity (Castle "OldOne") Church []) `shouldBe` (MkCity (Castle "NewName") Church [])
+        it "in build House with no houses in city" $ buildHouse 1 (MkCity NoCastle Church []) `shouldBe` (MkCity NoCastle Church [House 1])
+        it "in build House with one house in city" $ buildHouse 2 (MkCity NoCastle Church [House 1]) `shouldBe` (MkCity NoCastle Church [House 2, House 1])
+        it "in build House with more 4 peopel" $ buildHouse 5 (MkCity NoCastle Church [House 1]) `shouldBe` (MkCity NoCastle Church [House 1])
+        it "in build wall with no castle" $ buildWalls (MkCity NoCastle Church [House 1]) `shouldBe` (MkCity NoCastle Church [House 1])
+        it "in build wall with Wall" $ buildWalls (MkCity NoCastle Church [House 1]) `shouldBe` (MkCity NoCastle Church [House 1])
+        it "count people" $ countPeople [House 1,House 2,House 4] `shouldBe` 7
         it "count people with no houses" $ countPeople [] `shouldBe` 0
-        it "in build wall with Castle and no people" $ buildWalls (MkCity (Castle "New") NoWall Church [MkHouse 1]) `shouldBe` (MkCity (Castle "New") NoWall Church [MkHouse 1])
-        it "in build wall with Castle and People" $ buildWalls (MkCity (Castle "New") NoWall Church [MkHouse 4,MkHouse 4,MkHouse 4]) `shouldBe` (MkCity (Castle "New") Wall Church [MkHouse 4,MkHouse 4,MkHouse 4])
+        it "in build wall with Castle and no people" $ buildWalls (MkCity (Castle "New") Church [House 1]) `shouldBe` (MkCity (Castle "New") Church [House 1])
+        it "in build wall with Castle and People" $ buildWalls (MkCity (Castle "New") Church [House 4,House 4,House 4]) `shouldBe` (MkCity (CastleWithWall "New") Church [House 4,House 4,House 4])
     describe "Task7: Appends" $ do
         it "append Golds" $ append (Gold 10) (Gold 20) `shouldBe` (Gold 30)
         it "append Lists" $ append ([1,2,3] :: [Int]) ([4,5,6] :: [Int]) `shouldBe` [1,2,3,4,5,6]
@@ -58,5 +58,15 @@ chapter3 = describe "Chapter3" $ do
         it "Monster can kill Knight"  $ monsterHit (MonsterPlayer (Health 5) (Attack 55) True) (KnightPlayer (Health 10) (Attack 5) (Defence 1) True) `shouldBe` (KnightPlayer (Health (-44)) (Attack 5) (Defence 1) False)
         it "Monster can hit Monster"  $ monsterHit (MonsterPlayer (Health 5) (Attack 5)  True) (MonsterPlayer (Health 10) (Attack 5) True) `shouldBe` (MonsterPlayer (Health 5) (Attack 5) True)
         it "Monster can kill Monster" $ monsterHit (MonsterPlayer (Health 5) (Attack 55) True) (MonsterPlayer (Health 10) (Attack 5) True) `shouldBe` (MonsterPlayer (Health (-45)) (Attack 5) False)
-        it "Knight that can kill other Knight not kills him" $ knightHit (KnightPlayer (Health 5) (Attack 15) (Defence 5) True) (drinkPotion (KnightPlayer (Health 10) (Attack 5) (Defence 5) True)) `shouldBe` (KnightPlayer (Health 5) (Attack 5) (Defence 5) True)
+        it "Knight that can kill other Knight not kills him" $ knightHit (KnightPlayer (Health 5) (Attack 15) (Defence 5) True) (drinkPotion $ KnightPlayer (Health 10) (Attack 5) (Defence 5) True) `shouldBe` (KnightPlayer (Health 5) (Attack 5) (Defence 5) True)
+        it "Battle(K-M)WithOneRound(KWin)"  $ battle (mkKnightPlayer 10 10 1) (mkMonsterPlayer 10 3)   `shouldBe` "FirstWin"
+        it "Battle(K-M)WithOneRound(MWin)"  $ battle (mkKnightPlayer 10 5 1)  (mkMonsterPlayer 10 13)  `shouldBe` "SecondWin"
+        it "Battle(M-K)WithOneRound(KWin)"  $ battle (mkMonsterPlayer 10 3)   (mkKnightPlayer 10 15 1) `shouldBe` "SecondWin"
+        it "Battle(M-K)WithOneRound(MWin)"  $ battle (mkMonsterPlayer 10 20)  (mkKnightPlayer 10 15 1) `shouldBe` "FirstWin"
+        it "Battle(K-K)WithOneRound(K1Win)" $ battle (mkKnightPlayer 10 15 1) (mkKnightPlayer 10 13 1) `shouldBe` "FirstWin"
+        it "Battle(K-K)WithOneRound(K2Win)" $ battle (mkKnightPlayer 10 15 1) (mkKnightPlayer 10 13 6) `shouldBe` "SecondWin"
+        it "Battle(M-M)WithOneRound(M1Win)" $ battle (mkMonsterPlayer 10 15)  (mkMonsterPlayer 10 13)  `shouldBe` "FirstWin"
+        it "Battle(M-M)WithOneRound(M2Win)" $ battle (mkMonsterPlayer 10 15)  (mkMonsterPlayer 20 13)  `shouldBe` "SecondWin"
+        it "Battle(K-M)MultiRounds(M2Win)"  $ battle (mkKnightPlayer 10 5 1) (mkMonsterPlayer 10 3)    `shouldBe` "FirstWin"
+        it "Battle(K-M)MultiRounds(M2Win)"  $ battle (mkKnightPlayer 50 5 1) (mkMonsterPlayer 50 3)    `shouldBe` "FirstWin"
 

@@ -517,16 +517,14 @@ After defining the city, implement the following functions:
    and at least 10 living people inside
 -}
 
-data OptionalCastle = NoCastle | Castle String deriving (Show, Eq)
-data OptionalWall = NoWall | Wall deriving (Show, Eq)
+data OptionalCastle = NoCastle | Castle String | CastleWithWall String deriving (Show, Eq)
 data RestHouse = Church | Library deriving (Show, Eq)
-data House = MkHouse 
+data House = House 
   { houseLiving :: Int
   } deriving (Show, Eq)
 
 data MagicalCity = MkCity
   { cityCastle :: OptionalCastle
-  , cityWall :: OptionalWall
   , cityRestHouse :: RestHouse
   , cityHouses :: [House]
   } deriving (Show, Eq)
@@ -534,22 +532,33 @@ data MagicalCity = MkCity
 buildCastle :: String -> MagicalCity -> MagicalCity
 buildCastle name mc = mc {cityCastle = Castle name} 
 
+mkHouse :: Int -> Maybe House
+mkHouse living = if living > 0 && living <=4 
+  then Just (House living)
+  else Nothing
+
 buildHouse :: Int -> MagicalCity -> MagicalCity
-buildHouse living mc = mc {cityHouses = newHouseList }
-  where newHouseList = if living > 0 && living <=4 
-        then (MkHouse living) : cityHouses mc 
-        else cityHouses mc
+buildHouse living mc = mc {cityHouses = (newHouseList (mkHouse living) houses) }
+  where 
+    houses = cityHouses mc
+    newHouseList :: Maybe House -> [House] -> [House]
+    newHouseList (Just h) hl = h : hl
+    newHouseList (Nothing) hl = hl
+
 
 countPeople :: [House] -> Int
 countPeople hs = sum (map houseLiving hs)
 
+castleName :: MagicalCity -> String
+castleName (MkCity (Castle name) _ _) = name
+
 buildWalls :: MagicalCity -> MagicalCity
 buildWalls mc = if matchCity mc
-  then mc {cityWall = Wall}
+  then mc {cityCastle = CastleWithWall (castleName mc)}
   else mc
   where 
     matchCity :: MagicalCity -> Bool
-    matchCity (MkCity (Castle _) NoWall _ hs) = countPeople hs >= 10
+    matchCity (MkCity (Castle _) _ hs) = countPeople hs >= 10
     matchCity _ = False
 
 {-
@@ -1033,14 +1042,13 @@ instance Append Gold where
 
 instance Append [a] where
   append :: [a] -> [a] -> [a]
-  append l1 l2 = l1 ++ l2
+  append = (++)
 
 instance (Append a) => Append (Maybe a) where
     append :: Maybe a -> Maybe a ->Maybe a
     append (Just x) (Just y) = Just (append x y)
     append (Just x) Nothing = Just x
     append Nothing (Just y) = Just y
-    append Nothing Nothing = Nothing
 
 {-
 =🛡= Standard Typeclasses and Deriving
@@ -1231,33 +1239,39 @@ instance MonsterHit KnightPlayer where
 runAway :: MonsterPlayer -> MonsterPlayer
 runAway mp = mp { monsterAlive = False }
 
-class Alive a where
-  isAlive :: a -> Bool
 
-instance Alive MonsterPlayer where
-  isAlive :: MonsterPlayer -> Bool
-  isAlive = monsterAlive
+newtype BattlePlayer = BattlePlayer (Either MonsterPlayer KnightPlayer) deriving (Show, Eq)
 
-instance Alive KnightPlayer where
-  isAlive :: KnightPlayer -> Bool
-  isAlive = knightAlive
+isAlive :: BattlePlayer -> Bool
+isAlive (BattlePlayer (Left m)) = monsterAlive m
+isAlive (BattlePlayer (Right k)) = knightAlive k
 
--- fight :: a -> b -> b
--- idk
+mkKnightPlayer :: Int -> Int -> Int -> BattlePlayer
+mkKnightPlayer h a d = BattlePlayer $ Right $ KnightPlayer (Health h) (Attack a) (Defence d) True
 
--- battle :: a -> b -> String
--- battle one two 
---   | (isAlivee one) && not (isAlivee newTwo) = "FirstWin"
---   | not (isAlivee newOne) && (isAlivee two) = "SecondWin"
---   | otherwise = battle newOne newTwo
---     where
---       newTwo = attack one two
---       newOne = if (isAlivee newTwo)
---         then attack two one
---         else one
+mkMonsterPlayer :: Int -> Int -> BattlePlayer
+mkMonsterPlayer h a = BattlePlayer $ Left $ MonsterPlayer (Health h) (Attack a) True
+
+battleFight :: BattlePlayer -> BattlePlayer -> BattlePlayer
+battleFight (BattlePlayer (Left m1)) (BattlePlayer (Left m2)) = BattlePlayer $ Left $ monsterHit m1 m2 
+battleFight (BattlePlayer (Left m)) (BattlePlayer (Right k)) = BattlePlayer $ Right $ monsterHit m k
+battleFight (BattlePlayer (Right k)) (BattlePlayer (Left m)) = BattlePlayer $ Left $ knightHit k m
+battleFight (BattlePlayer (Right k1)) (BattlePlayer (Right k2)) = BattlePlayer $ Right $ knightHit k1 k2
+
+battle :: BattlePlayer -> BattlePlayer -> String
+battle one two 
+  | (isAlive one) && not (isAlive newTwo) = "FirstWin"
+  | not (isAlive newOne) && (isAlive two) = "SecondWin"
+  | not (isAlive newOne) && not (isAlive newTwo) = "Nobody"
+  | otherwise = battle newOne newTwo
+    where
+      newTwo = battleFight one two
+      newOne = if (isAlive newTwo)
+        then battleFight two one
+        else one
 
 {-
-You almost did it! Now it is time to the open pull request with your changes
+You finally did it! Now it is time to the open pull request with your changes
 and summon @vrom911 and @chshersh for the review!
 -}
 
