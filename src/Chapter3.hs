@@ -343,6 +343,12 @@ Define the Book product data type. You can take inspiration from our description
 of a book, but you are not limited only by the book properties we described.
 Create your own book type of your dreams!
 -}
+data Book = MkBook
+  { bookTitle :: String
+  , bookAuthor :: String
+  , bookYear :: Int
+  , bookRatingInStars :: Int
+  } deriving (Show)
 
 {- |
 =⚔️= Task 2
@@ -373,7 +379,23 @@ after the fight. The battle has the following possible outcomes:
    doesn't earn any money and keeps what they had before.
 
 -}
+data Knight = MkKnight 
+  { knightHealth :: Int
+  , knightAttack :: Int
+  , knightGold :: Int
+  } deriving (Show)
 
+data Monster = MkMonster 
+  { monsterHealth :: Int
+  , monsterAttack :: Int
+  , monsterGold :: Int
+  } deriving (Show)
+
+fight :: Monster -> Knight -> Int
+fight m k 
+  | knightAttack k > monsterHealth m = knightGold k + monsterGold m
+  | monsterAttack m > knightHealth k = -1
+  | otherwise                        = knightGold k
 {- |
 =🛡= Sum types
 
@@ -459,6 +481,21 @@ and provide more flexibility when working with data types.
 Create a simple enumeration for the meal types (e.g. breakfast). The one who
 comes up with the most number of names wins the challenge. Use your creativity!
 -}
+data Meal
+    = Eggs
+    | Yogurt
+    | Muffins
+    | Sandwich Meat Cheese
+
+data Meat
+  = ChickenMeat
+  | Beef
+  | Bacon
+
+data Cheese
+  = Mozzarella
+  | Goudse
+  | Sulguni
 
 {- |
 =⚔️= Task 4
@@ -479,6 +516,50 @@ After defining the city, implement the following functions:
    complicated task, walls can be built only if the city has a castle
    and at least 10 living people inside
 -}
+
+data OptionalCastle = NoCastle | Castle String | CastleWithWall String deriving (Show, Eq)
+data RestHouse = Church | Library deriving (Show, Eq)
+data House = House 
+  { houseLiving :: Int
+  } deriving (Show, Eq)
+
+data MagicalCity = MkCity
+  { cityCastle :: OptionalCastle
+  , cityRestHouse :: RestHouse
+  , cityHouses :: [House]
+  } deriving (Show, Eq)
+
+buildCastle :: String -> MagicalCity -> MagicalCity
+buildCastle name mc = mc {cityCastle = Castle name} 
+
+mkHouse :: Int -> Maybe House
+mkHouse living = if living > 0 && living <=4 
+  then Just (House living)
+  else Nothing
+
+buildHouse :: Int -> MagicalCity -> MagicalCity
+buildHouse living mc = mc {cityHouses = (newHouseList (mkHouse living) houses) }
+  where 
+    houses = cityHouses mc
+    newHouseList :: Maybe House -> [House] -> [House]
+    newHouseList (Just h) hl = h : hl
+    newHouseList (Nothing) hl = hl
+
+
+countPeople :: [House] -> Int
+countPeople hs = sum (map houseLiving hs)
+
+castleName :: MagicalCity -> String
+castleName (MkCity (Castle name) _ _) = name
+
+buildWalls :: MagicalCity -> MagicalCity
+buildWalls mc = if matchCity mc
+  then mc {cityCastle = CastleWithWall (castleName mc)}
+  else mc
+  where 
+    matchCity :: MagicalCity -> Bool
+    matchCity (MkCity (Castle _) _ hs) = countPeople hs >= 10
+    matchCity _ = False
 
 {-
 =🛡= Newtypes
@@ -560,22 +641,31 @@ introducing extra newtypes.
 🕯 HINT: if you complete this task properly, you don't need to change the
     implementation of the "hitPlayer" function at all!
 -}
+
+newtype Health = Health Int deriving (Show, Eq)
+newtype Armor = Armor Int deriving (Show, Eq)
+newtype Attack = Attack Int  deriving (Show, Eq)
+newtype Dexterity = Dexterity Int deriving (Show, Eq)
+newtype Strength = Strength Int  deriving (Show, Eq)
+newtype Damage = Damage Int  deriving (Show, Eq)
+newtype Defence = Defence Int deriving (Show, Eq)
+
 data Player = Player
-    { playerHealth    :: Int
-    , playerArmor     :: Int
-    , playerAttack    :: Int
-    , playerDexterity :: Int
-    , playerStrength  :: Int
+    { playerHealth    :: Health
+    , playerArmor     :: Armor
+    , playerAttack    :: Attack
+    , playerDexterity :: Dexterity
+    , playerStrength  :: Strength
     }
 
-calculatePlayerDamage :: Int -> Int -> Int
-calculatePlayerDamage attack strength = attack + strength
+calculatePlayerDamage :: Attack -> Strength -> Damage
+calculatePlayerDamage (Attack attack) (Strength strength) = Damage (attack + strength)
 
-calculatePlayerDefense :: Int -> Int -> Int
-calculatePlayerDefense armor dexterity = armor * dexterity
+calculatePlayerDefense :: Armor -> Dexterity -> Defence
+calculatePlayerDefense (Armor armor) (Dexterity dexterity) = Defence (armor * dexterity)
 
-calculatePlayerHit :: Int -> Int -> Int -> Int
-calculatePlayerHit damage defense health = health + defense - damage
+calculatePlayerHit :: Damage -> Defence -> Health -> Health
+calculatePlayerHit (Damage damage) (Defence defense) (Health health) = Health (health + defense - damage)
 
 -- The second player hits first player and the new first player is returned
 hitPlayer :: Player -> Player -> Player
@@ -752,6 +842,38 @@ parametrise data types in places where values can be of any general type.
 🕯 HINT: 'Maybe' that some standard types we mentioned above are useful for
   maybe-treasure ;)
 -}
+data Power = Fire | Frost | Thunder
+data Treasure = Diamond | Ruby | Silver
+
+data Dragon x = Dragon 
+  { power :: x
+  }
+
+data TreasureChest x = TreasureChest
+    { treasureChestGold :: Int
+    , treasureChestLoot :: Maybe x
+    }
+
+mkTreasure :: x -> Maybe (TreasureChest x)
+mkTreasure treasure = Just TreasureChest
+    { treasureChestGold = 50
+    , treasureChestLoot = Just treasure
+    }
+
+mkTreasureWithoutLoot :: Maybe (TreasureChest x)
+mkTreasureWithoutLoot = Just TreasureChest
+    { treasureChestGold = 50
+    , treasureChestLoot = Nothing
+    }
+
+data DragonLair x y = DragonLair
+  { dragon :: Dragon x
+  , treasure :: Maybe (TreasureChest y)
+  }
+
+frostDragonLair = DragonLair (Dragon Frost) Nothing
+fireDragonLair = DragonLair (Dragon Fire) mkTreasureWithoutLoot
+thunderDragonLair = DragonLair (Dragon Thunder) (mkTreasure Diamond)
 
 {-
 =🛡= Typeclasses
@@ -907,9 +1029,26 @@ Implement instances of "Append" for the following types:
   ✧ *(Challenge): "Maybe" where append is appending of values inside "Just" constructors
 
 -}
+newtype Gold = Gold 
+  { amount :: Int
+  } deriving (Eq, Show)
+
 class Append a where
     append :: a -> a -> a
 
+instance Append Gold where
+  append :: Gold -> Gold -> Gold
+  append (Gold a) (Gold b) = Gold (a + b)
+
+instance Append [a] where
+  append :: [a] -> [a] -> [a]
+  append = (++)
+
+instance (Append a) => Append (Maybe a) where
+    append :: Maybe a -> Maybe a ->Maybe a
+    append (Just x) (Just y) = Just (append x y)
+    append (Just x) Nothing = Just x
+    append Nothing (Just y) = Just y
 
 {-
 =🛡= Standard Typeclasses and Deriving
@@ -971,6 +1110,25 @@ implement the following functions:
 🕯 HINT: to implement this task, derive some standard typeclasses
 -}
 
+data DayOfWeek = Monday | Tuesday | Wednesday | Thursday | Friday | Saturday | Sunday deriving (Enum, Eq, Show)
+
+isWeekend :: DayOfWeek -> Bool
+isWeekend Saturday = True
+isWeekend Sunday = True
+isWeekend _ = False
+
+nextDay :: DayOfWeek -> DayOfWeek
+nextDay Sunday = Monday
+nextDay d = succ d
+
+daysToParty :: DayOfWeek -> Int
+daysToParty day = go 1 (nextDay day)
+  where 
+    go :: Int -> DayOfWeek -> Int
+    go acc dd = if dd == Friday 
+      then acc
+      else go (acc + 1) (nextDay dd)
+
 {-
 =💣= Task 9*
 
@@ -1006,9 +1164,114 @@ Implement data types and typeclasses, describing such a battle between two
 contestants, and write a function that decides the outcome of a fight!
 -}
 
+{-
+newtype Health = Health Int
+newtype Armor = Armor Int
+newtype Attack = Attack Int
+newtype Dexterity = Dexterity Int
+newtype Strength = Strength Int
+newtype Damage = Damage Int
+newtype Defence = Defence Int
+-}
+
+data KnightPlayer = KnightPlayer 
+  { knightPlayerHealth :: Health
+  , knightPlayerAttack :: Attack
+  , knightPlayerDefence :: Defence
+  , knightAlive :: Bool
+  } deriving (Show, Eq)
+
+data MonsterPlayer = MonsterPlayer 
+  { monsterPlayerHealth :: Health
+  , monsterPlayerAttack :: Attack
+  , monsterAlive :: Bool
+  } deriving (Show, Eq)
+
+-- A knight can attack, drink a health potion, cast a spell to increase their defence
+drinkPotion :: KnightPlayer -> KnightPlayer
+drinkPotion kp = kp { knightPlayerHealth = getNewHealth (knightPlayerHealth kp) }
+  where getNewHealth :: Health -> Health
+        getNewHealth (Health h) = Health (h + 5)
+
+castSpell :: KnightPlayer -> KnightPlayer
+castSpell kp = kp { knightPlayerDefence= getNewDef (knightPlayerDefence kp) }
+  where getNewDef :: Defence -> Defence
+        getNewDef (Defence h) = Defence (h + 5)
+
+class KnightHit a where
+  knightHit :: KnightPlayer -> a -> a
+
+instance KnightHit MonsterPlayer where
+  knightHit :: KnightPlayer -> MonsterPlayer -> MonsterPlayer
+  knightHit kp mp = mp { monsterPlayerHealth = Health(newHealthInt), monsterAlive = not isDefeated }
+    where calculateHit :: Health -> Attack -> Int
+          calculateHit (Health h) (Attack a) = h - a
+          newHealthInt = calculateHit (monsterPlayerHealth mp) (knightPlayerAttack kp)
+          isDefeated = newHealthInt <= 0
+
+instance KnightHit KnightPlayer where
+  knightHit :: KnightPlayer -> KnightPlayer -> KnightPlayer
+  knightHit kp mp = mp { knightPlayerHealth = Health(newHealthInt), knightAlive = not isDefeated }
+    where calculateHit :: Health -> Defence -> Attack -> Int
+          calculateHit (Health h) (Defence d) (Attack a) = h + d - a
+          newHealthInt = calculateHit (knightPlayerHealth mp) (knightPlayerDefence mp) (knightPlayerAttack kp)
+          isDefeated = newHealthInt <= 0
+
+class MonsterHit a where
+  monsterHit :: MonsterPlayer -> a -> a
+
+instance MonsterHit MonsterPlayer where
+  monsterHit :: MonsterPlayer -> MonsterPlayer -> MonsterPlayer
+  monsterHit kp mp = mp { monsterPlayerHealth = Health(newHealthInt), monsterAlive = not isDefeated }
+    where calculateHit :: Health -> Attack -> Int
+          calculateHit (Health h) (Attack a) = h - a
+          newHealthInt = calculateHit (monsterPlayerHealth mp) (monsterPlayerAttack kp)
+          isDefeated = newHealthInt <= 0
+
+instance MonsterHit KnightPlayer where
+  monsterHit :: MonsterPlayer -> KnightPlayer -> KnightPlayer
+  monsterHit kp mp = mp { knightPlayerHealth = Health(newHealthInt), knightAlive = not isDefeated }
+    where calculateHit :: Health -> Defence -> Attack -> Int
+          calculateHit (Health h) (Defence d) (Attack a) = h + d - a
+          newHealthInt = calculateHit (knightPlayerHealth mp) (knightPlayerDefence mp) (monsterPlayerAttack kp)
+          isDefeated = newHealthInt <= 0
+
+runAway :: MonsterPlayer -> MonsterPlayer
+runAway mp = mp { monsterAlive = False }
+
+
+newtype BattlePlayer = BattlePlayer (Either MonsterPlayer KnightPlayer) deriving (Show, Eq)
+
+isAlive :: BattlePlayer -> Bool
+isAlive (BattlePlayer (Left m)) = monsterAlive m
+isAlive (BattlePlayer (Right k)) = knightAlive k
+
+mkKnightPlayer :: Int -> Int -> Int -> BattlePlayer
+mkKnightPlayer h a d = BattlePlayer $ Right $ KnightPlayer (Health h) (Attack a) (Defence d) True
+
+mkMonsterPlayer :: Int -> Int -> BattlePlayer
+mkMonsterPlayer h a = BattlePlayer $ Left $ MonsterPlayer (Health h) (Attack a) True
+
+battleFight :: BattlePlayer -> BattlePlayer -> BattlePlayer
+battleFight (BattlePlayer (Left m1)) (BattlePlayer (Left m2)) = BattlePlayer $ Left $ monsterHit m1 m2 
+battleFight (BattlePlayer (Left m)) (BattlePlayer (Right k)) = BattlePlayer $ Right $ monsterHit m k
+battleFight (BattlePlayer (Right k)) (BattlePlayer (Left m)) = BattlePlayer $ Left $ knightHit k m
+battleFight (BattlePlayer (Right k1)) (BattlePlayer (Right k2)) = BattlePlayer $ Right $ knightHit k1 k2
+
+battle :: BattlePlayer -> BattlePlayer -> String
+battle one two 
+  | (isAlive one) && not (isAlive newTwo) = "FirstWin"
+  | not (isAlive newOne) && (isAlive two) = "SecondWin"
+  | not (isAlive newOne) && not (isAlive newTwo) = "Nobody"
+  | otherwise = battle newOne newTwo
+    where
+      newTwo = battleFight one two
+      newOne = if (isAlive newTwo)
+        then battleFight two one
+        else one
 
 {-
-You did it! Now it is time to the open pull request with your changes
+You finally did it! Now it is time to the open pull request with your changes
 and summon @vrom911 and @chshersh for the review!
 -}
 
