@@ -301,6 +301,7 @@ values and apply them to the type level?
 instance Functor (Secret e) where
     fmap :: (a -> b) -> Secret e a -> Secret e b
     fmap f (Reward tb) = Reward (f tb)
+    fmap _ (Trap d) = Trap d
 
 {- |
 =⚔️= Task 3
@@ -320,7 +321,7 @@ data List a
 
 instance Functor (List) where
     fmap :: (a -> b) -> List a -> List b
-    fmap f Empty = Empty
+    fmap _ Empty = Empty
     fmap f (Cons d b) = Cons (f d) (fmap f b)
 
 
@@ -496,6 +497,7 @@ instance Applicative (Secret e) where
 
     (<*>) :: Secret e (a -> b) -> Secret e a -> Secret e b
     Reward f <*> d = fmap f d
+    Trap t <*> _ = Trap t
 
 {- |
 =⚔️= Task 5
@@ -509,14 +511,17 @@ Implement the 'Applicative' instance for our 'List' type.
   type.
 -}
 
+append :: List a -> List a -> List a
+append Empty d = d
+append (Cons el l) l2 = Cons el (append l l2) 
+
 instance Applicative (List) where
     pure :: a -> List a
     pure i = Cons i $ Empty 
 
     (<*>) :: List (a -> b) -> List a -> List b
     Empty <*> _ = Empty
-    Cons fun lfun <*> dat = fmap fun dat
----- where; it works but not right
+    Cons f l <*> dat = append (fmap f dat) (l <*> dat)
  
 {- |
 =🛡= Monad
@@ -628,7 +633,8 @@ Implement the 'Monad' instance for our 'Secret' type.
 -}
 instance Monad (Secret e) where
     (>>=) :: Secret e a -> (a -> Secret e b) -> Secret e b
-    (>>=) = error "bind Secret: Not implemented!"
+    Reward d >>= f = f d
+    Trap d >>= _ = Trap d
 
 {- |
 =⚔️= Task 7
@@ -639,6 +645,15 @@ Implement the 'Monad' instance for our lists.
   maybe a few) to flatten lists of lists to a single list.
 -}
 
+--copypasted :(
+concatList :: List (List a) -> List a
+concatList Empty = Empty
+concatList (Cons x xs) = append x (concatList xs)
+
+instance Monad (List) where
+    (>>=) :: List a -> (a -> List b) -> List b
+    Empty >>= _ = Empty
+    el >>= f = concatList (fmap f el)
 
 {- |
 =💣= Task 8*: Before the Final Boss
