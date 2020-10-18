@@ -277,11 +277,12 @@ inside or a reward with some treasure. You never know what's inside
 until opened! But the 'Functor' instance allows changing the reward
 inside, so it is quite handy.
 
-fmap (replicate 3) (Reward "42")
+>>> fmap (replicate 3) (Reward "42")
 Reward ["42","42","42"]
-fmap (replicate 3) (Reward 42)
+>>> fmap (replicate 3) (Reward 42)
 Reward [42,42,42]
-fmap (replicate 3) (Trap 42)
+>>> fmap (replicate 3) (Trap 42)
+Trap 42
 
 -}
 data Secret e a
@@ -513,11 +514,12 @@ Implement the 'Applicative' instance for our 'List' type.
 
 append :: List a -> List a -> List a
 append Empty d = d
-append (Cons el l) l2 = Cons el (append l l2) 
+append xs Empty = xs
+append (Cons x xs) xss = Cons x (append xs xss) 
 
 instance Applicative (List) where
     pure :: a -> List a
-    pure i = Cons i $ Empty 
+    pure i = Cons i Empty 
 
     (<*>) :: List (a -> b) -> List a -> List b
     Empty <*> _ = Empty
@@ -652,9 +654,89 @@ concatList (Cons x xs) = append x (concatList xs)
 
 instance Monad (List) where
     (>>=) :: List a -> (a -> List b) -> List b
-    Empty >>= _ = Empty
     el >>= f = concatList (fmap f el)
 
+{- |
+Task 7.1 
+Convert two maybes to a single maybe of a pair:
+>>> maybePair (Just 1) (Just 2)
+Just (1,2)
+>>> maybePair (Just 1) Nothing
+Nothing
+>>> maybePair Nothing Nothing
+Nothing
+-}
+maybePair :: Maybe a -> Maybe b -> Maybe (a, b)
+maybePair (Just x1) (Just x2) = Just (x1, x2)
+maybePair _ _ = Nothing
+
+{- |
+Task 7.2 
+Find a sum of two maybes:
+-}
+maybeSum :: Maybe Int -> Maybe Int -> Maybe Int
+maybeSum (Just x1) (Just x2) = Just (x1 + x2)
+maybeSum (Just x1) Nothing = Just x1
+maybeSum Nothing (Just x2) = Just x2
+maybeSum _ _ = Nothing
+
+{- |
+Task 7.3
+Can you generalize the above function and notice the pattern? Something like:
+bind2 :: ??? -> Maybe a -> Maybe b -> Maybe c
+>>> bind2 (+) (Just 1 ) (Just 2 )
+Just 3
+>>> bind2 (+) (Just 4 ) (Just 2 )
+Just 6
+>>> bind2 (*) (Just 4 ) (Just 2 )
+Just 8
+>>> bind2 (*) (Just 4 ) (Nothing)
+Nothing
+-}
+
+bind2 :: ( a -> b -> c ) -> Maybe a -> Maybe b -> Maybe c
+bind2 f (Just x1) (Just x2) = Just (f x1 x2)
+bind2 _ _ _ = Nothing
+
+{- |
+Task 7.4
+Try implementing smartReplicate for your List using Monad instance for lists.
+@
+fmap  ::   (a -> b) -> f a -> f b
+(<*>) :: f (a -> b) -> f a -> f b
+(=<<) :: (a -> f b) -> f a -> f b
+(>>=) :: f a -> (a -> f b) -> f b
+--- helpers 
+(>>=) :: List a -> (a -> List b) -> List b
+(<*>) :: List (a -> b) -> List a -> List b
+pure :: a -> List a
+fmap :: (a -> b) -> List a -> List b
+replicate (1 :: Int) :: a -> [a]
+concatList :: List (List a) -> List a
+append :: List a -> List a -> List a
+
+I didnt understand which way it should behave
+>>> smartReplicate 3 (Cons 1 $ Cons 2 $ Empty)
+Cons [1,1,1] (Cons [2,2,2] Empty)
+>>> smartReplicate2 3 (Cons 1 $ Cons 2 $ Empty)
+Cons 1 (Cons 1 (Cons 1 (Cons 2 (Cons 2 (Cons 2 Empty))))
+Nevermind though, I implemented both anyway
+-}
+
+smartReplicate :: Int -> List a -> List [a]
+smartReplicate _ Empty = Empty
+smartReplicate times (Cons x xs) = append (pure x >>= appendedReplicate) (smartReplicate times xs)
+  where 
+    appendedReplicate :: a -> List [a]
+    appendedReplicate d = pure (replicate times d)
+
+smartReplicate2 :: Int -> List a -> List a
+smartReplicate2 _ Empty = Empty
+smartReplicate2 times (Cons x xs) = append (replicatedAppend x) (smartReplicate2 times xs)
+  where 
+    replicatedAppend :: a -> List a
+    replicatedAppend d = foldl (append) Empty $ map pure $ replicate times d
+    
 {- |
 =💣= Task 8*: Before the Final Boss
 
@@ -668,11 +750,12 @@ or anything else! However, this is not a problem in Haskell. You still
 can implement a function with the type signature described below.
 
 Can you implement a monad version of AND, polymorphic over any monad?
-
+(>>=) :: m Bool -> (Bool -> m Bool) -> m Bool
+pure :: Bool -> m Bool
 🕯 HINT: Use "(>>=)", "pure" and anonymous function
 -}
 andM :: (Monad m) => m Bool -> m Bool -> m Bool
-andM = error "andM: Not implemented!"
+andM fb1 fb2 = fb1 >>= (\r -> if r then fb2 else pure False)
 
 {- |
 =🐉= Task 9*: Final Dungeon Boss
