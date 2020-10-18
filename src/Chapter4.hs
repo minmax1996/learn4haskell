@@ -719,7 +719,8 @@ I didnt understand which way it should behave
 >>> smartReplicate 3 (Cons 1 $ Cons 2 $ Empty)
 Cons [1,1,1] (Cons [2,2,2] Empty)
 >>> smartReplicate2 3 (Cons 1 $ Cons 2 $ Empty)
-Cons 1 (Cons 1 (Cons 1 (Cons 2 (Cons 2 (Cons 2 Empty))))
+Cons 1 (Cons 1 (Cons 1 (Cons 2 (Cons 2 (Cons 2 Empty)))))
+
 Nevermind though, I implemented both anyway
 -}
 
