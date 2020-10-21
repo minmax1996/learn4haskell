@@ -667,18 +667,14 @@ Nothing
 Nothing
 -}
 maybePair :: Maybe a -> Maybe b -> Maybe (a, b)
-maybePair (Just x1) (Just x2) = Just (x1, x2)
-maybePair _ _ = Nothing
+maybePair ma mb = ma >>= (\x -> fmap (\r -> (x,r)) mb)
 
 {- |
 Task 7.2 
 Find a sum of two maybes:
 -}
 maybeSum :: Maybe Int -> Maybe Int -> Maybe Int
-maybeSum (Just x1) (Just x2) = Just (x1 + x2)
-maybeSum (Just x1) Nothing = Just x1
-maybeSum Nothing (Just x2) = Just x2
-maybeSum _ _ = Nothing
+maybeSum ma mb = ma >>= (\x -> fmap (+x) mb)
 
 {- |
 Task 7.3
@@ -695,8 +691,7 @@ Nothing
 -}
 
 bind2 :: ( a -> b -> c ) -> Maybe a -> Maybe b -> Maybe c
-bind2 f (Just x1) (Just x2) = Just (f x1 x2)
-bind2 _ _ _ = Nothing
+bind2 f ma mb = ma >>= (\x -> fmap (f x) mb)
 
 {- |
 Task 7.4
@@ -715,30 +710,24 @@ replicate (1 :: Int) :: a -> [a]
 concatList :: List (List a) -> List a
 append :: List a -> List a -> List a
 
-I didnt understand which way it should behave
->>> smartReplicate 3 (Cons 1 $ Cons 2 $ Empty)
-Cons [1,1,1] (Cons [2,2,2] Empty)
->>> smartReplicate2 3 (Cons 1 $ Cons 2 $ Empty)
-Cons 1 (Cons 1 (Cons 1 (Cons 2 (Cons 2 (Cons 2 Empty)))))
-
-Nevermind though, I implemented both anyway
+>>> smartReplicate (Cons 1 $ Cons 2 $ Cons 3 $ Empty)
+Cons [1] (Cons [2,2] (Cons [3,3,3] Empty))
+>>> smartReplicate2 (Cons 1 $ Cons 2 $ Cons 3 $ Empty)
+Cons 1 (Cons 2 (Cons 2 (Cons 3 (Cons 3 (Cons 3 Empty)))))
+>>> smartReplicate3 (Cons 1 $ Cons 2 $ Cons 3 $ Empty)
+Cons (Cons 1 Empty) (Cons (Cons 2 (Cons 2 Empty)) (Cons (Cons 3 (Cons 3 (Cons 3 Empty))) Empty))
 -}
 
-smartReplicate :: Int -> List a -> List [a]
-smartReplicate _ Empty = Empty
-smartReplicate times (Cons x xs) = append (pure x >>= appendedReplicate) (smartReplicate times xs)
-  where 
-    appendedReplicate :: a -> List [a]
-    appendedReplicate d = pure (replicate times d)
+smartReplicate :: List Int -> List [Int]
+smartReplicate li = li >>= (\d -> pure (replicate d d))
 
-smartReplicate2 :: Int -> List a -> List a
-smartReplicate2 _ Empty = Empty
-smartReplicate2 times (Cons x xs) = append (replicatedAppend x) (smartReplicate2 times xs)
-  where 
-    replicatedAppend :: a -> List a
-    replicatedAppend d = foldl (append) Empty $ map pure $ replicate times d
-    
-{- |
+smartReplicate2 :: List Int -> List Int
+smartReplicate2 li = li >>= (\d -> foldl (append) Empty $ map pure $ replicate d d)
+
+smartReplicate3 :: List Int -> List (List Int)
+smartReplicate3 li = li >>= (\d -> pure $ foldl (append) Empty $ map pure $ replicate d d)
+
+{- |            ListInt      Int          Int   List b
 =💣= Task 8*: Before the Final Boss
 
 So far we've been talking only about instances and use cases of
