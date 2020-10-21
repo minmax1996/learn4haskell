@@ -789,6 +789,97 @@ Specifically,
  ❃ Implement the function to convert Tree to list
 -}
 
+data Tree a 
+  = Node a (Tree a) (Tree a) 
+  | NoValue
+  deriving (Show, Eq)
+
+-- simple constructor for leaf Node
+leaf :: a -> Tree a
+leaf d = Node d NoValue NoValue
+
+-- append using general rules for balanced tree
+-- counts NoValue spots and balance by add in least spots subtree 
+appendBalanced :: a -> Tree a -> Tree a
+appendBalanced d NoValue = leaf d
+appendBalanced d (Node root left right) = if emptyLeft >= emptyRight 
+  then (Node root left (appendBalanced d right) )
+  else (Node root (appendBalanced d left) right )
+  where 
+    emptyLeft = countEmptySpotsInTree left
+    emptyRight = countEmptySpotsInTree right
+
+-- count NoValue spots in Tree
+countEmptySpotsInTree :: Tree a -> Int
+countEmptySpotsInTree = go 0
+  where 
+    go :: Int -> Tree a -> Int
+    go acc NoValue = acc+1
+    go acc (Node _ l r) = (go (acc) l) + (go (acc) r)
+
+-- append using binary search tree rules
+appendBST :: Ord a => a -> Tree a -> Tree a
+appendBST d (Node root left right) 
+  | d < root = Node root (appendBST d left) right
+  | d > root = Node root left (appendBST d right)
+  | otherwise = Node d left right
+appendBST d NoValue = leaf d
+
+-- constructor for binary search tree from list ord a
+mkBinarySearchTree :: Ord a => [a] -> Tree a
+mkBinarySearchTree [] = NoValue
+mkBinarySearchTree (x:xs) = appendBST x (mkBinarySearchTree xs)
+
+-- ❃ Implement the Functor instance for Tree
+instance Functor Tree where
+    fmap :: (a -> b) -> Tree a -> Tree b
+    fmap _ NoValue = NoValue
+    fmap f (Node root left right) = Node (f root) (fmap f left) (fmap f right)
+
+
+instance Applicative Tree where
+    pure :: a -> Tree a
+    pure = leaf
+
+    (<*>) :: Tree (a -> b) -> Tree a -> Tree b
+    Node f leftf rightf <*> Node root ltr rtr = Node (f root) (leftf <*> ltr) (rightf <*> rtr)
+    _ <*> _ = NoValue
+
+instance Monad Tree where
+    (>>=) :: Tree a -> (a -> Tree b) -> Tree b
+    tre >>= f 
+      = treeFromList              -- make new Tree b from List b
+      $ treeToList =<<            -- open List(Tree b) to List b 
+        (fmap f $ treeToList tre) -- convert (Tree a) to (List a) and apply f get List(Tree b)
+
+-- helper function for tests
+makeRangeTree :: Int -> Tree Int
+makeRangeTree d = mkBinarySearchTree [1..d]
+
+-- ❃ Implement the reverseTree function that reverses the tree and each
+--   subtree of a tree
+reverseTree :: Tree a -> Tree a
+reverseTree (Node root l r) = Node root (reverseTree r) (reverseTree l)
+reverseTree NoValue = NoValue
+
+-- ❃ Implement the function to convert Tree to list
+treeToList :: Tree a -> List a
+treeToList = go Empty
+  where 
+    go :: List a -> Tree a -> List a
+    go acc NoValue = acc
+    go acc (Node root ltr rtr) 
+      = append (go acc ltr) 
+      $ append (pure root) 
+      $ append (go acc rtr) Empty
+
+-- Inverse function to convert List to Tree used in >>= func
+treeFromList :: List a -> Tree a
+treeFromList = go NoValue
+  where 
+    go ::  Tree a -> List a -> Tree a
+    go acc Empty = acc
+    go acc (Cons x xs) = appendBalanced x (go acc xs)
 
 {-
 You did it! Now it is time to the open pull request with your changes
