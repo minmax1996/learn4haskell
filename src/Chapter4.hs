@@ -114,23 +114,23 @@ As always, try to guess the output first! And don't forget to insert
 the output in here:
 
 >>> :k Char
-
+Char :: *
 >>> :k Bool
-
+Bool :: *
 >>> :k [Int]
-
+[Int] :: *
 >>> :k []
-
+[] :: * -> *
 >>> :k (->)
-
+(->) :: * -> * -> *
 >>> :k Either
-
+Either :: * -> * -> *
 >>> data Trinity a b c = MkTrinity a b c
 >>> :k Trinity
-
+Trinity :: * -> * -> * -> *
 >>> data IntBox f = MkIntBox (f Int)
 >>> :k IntBox
-
+IntBox :: (* -> *) -> *
 -}
 
 {- |
@@ -259,7 +259,7 @@ name.
 
 > QUESTION: Can you understand why the following implementation of the
   Functor instance for Maybe doesn't compile?
-
+Maybe because in `fmap _ x = x` returns Maybe a insteed of Maybe b
 @
 instance Functor Maybe where
     fmap :: (a -> b) -> Maybe a -> Maybe b
@@ -276,6 +276,14 @@ below. 'Secret' is either an unknown trap with something dangerous
 inside or a reward with some treasure. You never know what's inside
 until opened! But the 'Functor' instance allows changing the reward
 inside, so it is quite handy.
+
+>>> fmap (replicate 3) (Reward "42")
+Reward ["42","42","42"]
+>>> fmap (replicate 3) (Reward 42)
+Reward [42,42,42]
+>>> fmap (replicate 3) (Trap 42)
+Trap 42
+
 -}
 data Secret e a
     = Trap e
@@ -293,7 +301,8 @@ values and apply them to the type level?
 -}
 instance Functor (Secret e) where
     fmap :: (a -> b) -> Secret e a -> Secret e b
-    fmap = error "fmap for Box: not implemented!"
+    fmap f (Reward tb) = Reward (f tb)
+    fmap _ (Trap d) = Trap d
 
 {- |
 =⚔️= Task 3
@@ -302,10 +311,20 @@ Implement Functor instance for the "List" type defined below. This
 list type mimics the standard lists in Haskell. But for training
 purposes, let's practise our skills on implementing standard
 typeclasses for standard data types.
+myl = Cons 2 $ Cons 1 $ Empty
+fmap (replicate 3) myl
+Cons [2,2,2] (Cons [1,1,1] Empty)
 -}
 data List a
     = Empty
     | Cons a (List a)
+    deriving (Show, Eq)
+
+instance Functor (List) where
+    fmap :: (a -> b) -> List a -> List b
+    fmap _ Empty = Empty
+    fmap f (Cons d b) = Cons (f d) (fmap f b)
+
 
 {- |
 =🛡= Applicative
@@ -469,13 +488,17 @@ Applicatives can be found in many applications:
 =⚔️= Task 4
 
 Implement the Applicative instance for our 'Secret' data type from before.
+fmap (+) (Reward 1) <*> (Reward 2)
+=> Reward 3
 -}
+
 instance Applicative (Secret e) where
     pure :: a -> Secret e a
-    pure = error "pure Secret: Not implemented!"
+    pure = Reward
 
     (<*>) :: Secret e (a -> b) -> Secret e a -> Secret e b
-    (<*>) = error "(<*>) Secret: Not implemented!"
+    Reward f <*> d = fmap f d
+    Trap t <*> _ = Trap t
 
 {- |
 =⚔️= Task 5
@@ -489,7 +512,19 @@ Implement the 'Applicative' instance for our 'List' type.
   type.
 -}
 
+append :: List a -> List a -> List a
+append Empty d = d
+append xs Empty = xs
+append (Cons x xs) xss = Cons x (append xs xss) 
 
+instance Applicative (List) where
+    pure :: a -> List a
+    pure i = Cons i Empty 
+
+    (<*>) :: List (a -> b) -> List a -> List b
+    Empty <*> _ = Empty
+    Cons f l <*> dat = append (fmap f dat) (l <*> dat)
+ 
 {- |
 =🛡= Monad
 
@@ -600,7 +635,8 @@ Implement the 'Monad' instance for our 'Secret' type.
 -}
 instance Monad (Secret e) where
     (>>=) :: Secret e a -> (a -> Secret e b) -> Secret e b
-    (>>=) = error "bind Secret: Not implemented!"
+    Reward d >>= f = f d
+    Trap d >>= _ = Trap d
 
 {- |
 =⚔️= Task 7
@@ -611,8 +647,87 @@ Implement the 'Monad' instance for our lists.
   maybe a few) to flatten lists of lists to a single list.
 -}
 
+--copypasted :(
+concatList :: List (List a) -> List a
+concatList Empty = Empty
+concatList (Cons x xs) = append x (concatList xs)
+
+instance Monad (List) where
+    (>>=) :: List a -> (a -> List b) -> List b
+    el >>= f = concatList (fmap f el)
 
 {- |
+Task 7.1 
+Convert two maybes to a single maybe of a pair:
+>>> maybePair (Just 1) (Just 2)
+Just (1,2)
+>>> maybePair (Just 1) Nothing
+Nothing
+>>> maybePair Nothing Nothing
+Nothing
+-}
+maybePair :: Maybe a -> Maybe b -> Maybe (a, b)
+maybePair ma mb = ma >>= (\x -> fmap (\r -> (x,r)) mb)
+
+{- |
+Task 7.2 
+Find a sum of two maybes:
+-}
+maybeSum :: Maybe Int -> Maybe Int -> Maybe Int
+maybeSum ma mb = ma >>= (\x -> fmap (+x) mb)
+
+{- |
+Task 7.3
+Can you generalize the above function and notice the pattern? Something like:
+bind2 :: ??? -> Maybe a -> Maybe b -> Maybe c
+>>> bind2 (+) (Just 1 ) (Just 2 )
+Just 3
+>>> bind2 (+) (Just 4 ) (Just 2 )
+Just 6
+>>> bind2 (*) (Just 4 ) (Just 2 )
+Just 8
+>>> bind2 (*) (Just 4 ) (Nothing)
+Nothing
+-}
+
+bind2 :: ( a -> b -> c ) -> Maybe a -> Maybe b -> Maybe c
+bind2 f ma mb = ma >>= (\x -> fmap (f x) mb)
+
+{- |
+Task 7.4
+Try implementing smartReplicate for your List using Monad instance for lists.
+@
+fmap  ::   (a -> b) -> f a -> f b
+(<*>) :: f (a -> b) -> f a -> f b
+(=<<) :: (a -> f b) -> f a -> f b
+(>>=) :: f a -> (a -> f b) -> f b
+--- helpers 
+(>>=) :: List a -> (a -> List b) -> List b
+(<*>) :: List (a -> b) -> List a -> List b
+pure :: a -> List a
+fmap :: (a -> b) -> List a -> List b
+replicate (1 :: Int) :: a -> [a]
+concatList :: List (List a) -> List a
+append :: List a -> List a -> List a
+
+>>> smartReplicate (Cons 1 $ Cons 2 $ Cons 3 $ Empty)
+Cons [1] (Cons [2,2] (Cons [3,3,3] Empty))
+>>> smartReplicate2 (Cons 1 $ Cons 2 $ Cons 3 $ Empty)
+Cons 1 (Cons 2 (Cons 2 (Cons 3 (Cons 3 (Cons 3 Empty)))))
+>>> smartReplicate3 (Cons 1 $ Cons 2 $ Cons 3 $ Empty)
+Cons (Cons 1 Empty) (Cons (Cons 2 (Cons 2 Empty)) (Cons (Cons 3 (Cons 3 (Cons 3 Empty))) Empty))
+-}
+
+smartReplicate :: List Int -> List [Int]
+smartReplicate li = li >>= (\d -> pure (replicate d d))
+
+smartReplicate2 :: List Int -> List Int
+smartReplicate2 li = li >>= (\d -> foldl (append) Empty $ map pure $ replicate d d)
+
+smartReplicate3 :: List Int -> List (List Int)
+smartReplicate3 li = li >>= (\d -> pure $ foldl (append) Empty $ map pure $ replicate d d)
+
+{- |            ListInt      Int          Int   List b
 =💣= Task 8*: Before the Final Boss
 
 So far we've been talking only about instances and use cases of
@@ -625,11 +740,12 @@ or anything else! However, this is not a problem in Haskell. You still
 can implement a function with the type signature described below.
 
 Can you implement a monad version of AND, polymorphic over any monad?
-
+(>>=) :: m Bool -> (Bool -> m Bool) -> m Bool
+pure :: Bool -> m Bool
 🕯 HINT: Use "(>>=)", "pure" and anonymous function
 -}
 andM :: (Monad m) => m Bool -> m Bool -> m Bool
-andM = error "andM: Not implemented!"
+andM fb1 fb2 = fb1 >>= (\r -> if r then fb2 else pure False)
 
 {- |
 =🐉= Task 9*: Final Dungeon Boss
@@ -673,6 +789,97 @@ Specifically,
  ❃ Implement the function to convert Tree to list
 -}
 
+data Tree a 
+  = Node a (Tree a) (Tree a) 
+  | NoValue
+  deriving (Show, Eq)
+
+-- simple constructor for leaf Node
+leaf :: a -> Tree a
+leaf d = Node d NoValue NoValue
+
+-- append using general rules for balanced tree
+-- counts NoValue spots and balance by add in least spots subtree 
+appendBalanced :: a -> Tree a -> Tree a
+appendBalanced d NoValue = leaf d
+appendBalanced d (Node root left right) = if emptyLeft >= emptyRight 
+  then (Node root left (appendBalanced d right) )
+  else (Node root (appendBalanced d left) right )
+  where 
+    emptyLeft = countEmptySpotsInTree left
+    emptyRight = countEmptySpotsInTree right
+
+-- count NoValue spots in Tree
+countEmptySpotsInTree :: Tree a -> Int
+countEmptySpotsInTree = go 0
+  where 
+    go :: Int -> Tree a -> Int
+    go acc NoValue = acc+1
+    go acc (Node _ l r) = (go (acc) l) + (go (acc) r)
+
+-- append using binary search tree rules
+appendBST :: Ord a => a -> Tree a -> Tree a
+appendBST d (Node root left right) 
+  | d < root = Node root (appendBST d left) right
+  | d > root = Node root left (appendBST d right)
+  | otherwise = Node d left right
+appendBST d NoValue = leaf d
+
+-- constructor for binary search tree from list ord a
+mkBinarySearchTree :: Ord a => [a] -> Tree a
+mkBinarySearchTree [] = NoValue
+mkBinarySearchTree (x:xs) = appendBST x (mkBinarySearchTree xs)
+
+-- ❃ Implement the Functor instance for Tree
+instance Functor Tree where
+    fmap :: (a -> b) -> Tree a -> Tree b
+    fmap _ NoValue = NoValue
+    fmap f (Node root left right) = Node (f root) (fmap f left) (fmap f right)
+
+
+instance Applicative Tree where
+    pure :: a -> Tree a
+    pure = leaf
+
+    (<*>) :: Tree (a -> b) -> Tree a -> Tree b
+    Node f leftf rightf <*> Node root ltr rtr = Node (f root) (leftf <*> ltr) (rightf <*> rtr)
+    _ <*> _ = NoValue
+
+instance Monad Tree where
+    (>>=) :: Tree a -> (a -> Tree b) -> Tree b
+    tre >>= f 
+      = treeFromList              -- make new Tree b from List b
+      $ treeToList =<<            -- open List(Tree b) to List b 
+        (fmap f $ treeToList tre) -- convert (Tree a) to (List a) and apply f get List(Tree b)
+
+-- helper function for tests
+makeRangeTree :: Int -> Tree Int
+makeRangeTree d = mkBinarySearchTree [1..d]
+
+-- ❃ Implement the reverseTree function that reverses the tree and each
+--   subtree of a tree
+reverseTree :: Tree a -> Tree a
+reverseTree (Node root l r) = Node root (reverseTree r) (reverseTree l)
+reverseTree NoValue = NoValue
+
+-- ❃ Implement the function to convert Tree to list
+treeToList :: Tree a -> List a
+treeToList = go Empty
+  where 
+    go :: List a -> Tree a -> List a
+    go acc NoValue = acc
+    go acc (Node root ltr rtr) 
+      = append (go acc ltr) 
+      $ append (pure root) 
+      $ append (go acc rtr) Empty
+
+-- Inverse function to convert List to Tree used in >>= func
+treeFromList :: List a -> Tree a
+treeFromList = go NoValue
+  where 
+    go ::  Tree a -> List a -> Tree a
+    go acc Empty = acc
+    go acc (Cons x xs) = appendBalanced x (go acc xs)
 
 {-
 You did it! Now it is time to the open pull request with your changes
